@@ -1,0 +1,123 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="Launcher" basedir="." default="build">
+
+    <!-- Hook into One-Jar project -->
+    <available property="one-jar.dir" file="../one-jar/build.onejar.xml" value="../one-jar"/>
+    <!-- Will be ignored if available above -->
+	<property name="one-jar.dir" location="one-jar" />
+    <import file="${one-jar.dir}/build.onejar.xml"/>
+    
+	<property name="eclipse.jar-in-jar.dir" value="build-lib/eclipse"/>
+	<property name="temp.dir" value="temp" />	
+    <path id="libraries">
+    	<fileset dir="lib" includes="*.jar"/>
+    </path>
+    
+    <target name="mkdirs">
+        <mkdir dir="${test.results.dir}" />
+        <mkdir dir="${test.reports.dir}"/>
+        <mkdir dir="classes/src"/>
+    	<mkdir dir="classes/test"/>
+        <mkdir dir="classes/junit"/>
+    	<mkdir dir="build"/>
+    </target>
+
+	<target name="build" depends="clean, mkdirs, compile, build.Launcher" />
+
+	<target name="clean">
+		<delete dir="classes" />
+	</target>
+	
+	<target name="distclean" depends="clean" description="clean distribution">
+	    <delete dir="build"/>
+		<delete dir="test-reports"/>
+	    <delete dir="test-results"/>
+	</target>
+
+	<target name="compile" depends="mkdirs">
+        <javac destdir="classes/src" includes="**/*.java" debug="true">
+            <src path="src" />
+            <classpath refid="libraries" />
+            <classpath refid="one-jar.libraries"/>
+            <classpath path="${one-jar.ant.jar}"/>
+        </javac>
+        <javac destdir="classes/test" includes="**/*.java" debug="true">
+            <src path="test" />
+            <classpath refid="libraries" />
+            <classpath refid="one-jar.libraries"/>
+            <classpath path="${one-jar.ant.jar}"/>
+        </javac>
+        <javac destdir="classes/junit" includes="**/*.java" debug="true">
+            <src path="junit" />
+            <classpath refid="libraries" />
+            <classpath refid="one-jar.libraries"/>
+            <!-- Uses Invoker to set up a JUnit test bridge -->
+        	<classpath path="classes/test"/>
+        </javac>
+	</target>
+
+    <!-- Build the One-Jar -->
+	<target name="build.Launcher">
+		<mkdir dir="build"/>
+		<one-jar destfile="build/Launcher.jar">
+            <manifest>
+                <attribute name="Main-Class" value="lightsoutgaming.lifeless.launcher.Boot"/>
+                <attribute name="One-Jar-Main-Class" value="lightsoutgaming.lifeless.launcher.main.LauncherMain"/>
+            </manifest>
+            <main>
+                <fileset dir="classes/src"/>
+            </main>
+            <lib>
+                <fileset dir="lib" includes="*.jar" />
+            </lib>
+		</one-jar>
+		<one-jar destfile="build/test-Launcher.jar">
+            <manifest>
+                <attribute name="Main-Class" value="lightsoutgaming.lifeless.launcher.Boot"/>
+            	<attribute name="One-Jar-Main-Class" value="lightsoutgaming.lifeless.launcher.test.Test"/>
+            </manifest>
+            <zipfileset src="${one-jar.ant.jar}" includes="**/Testable.class"/>
+			<main>
+				<fileset dir="classes/test"/>
+			</main>
+			<lib>
+				<fileset dir="lib" includes="*.jar" />
+			</lib>
+		</one-jar>
+		<delete dir="${temp.dir}" />
+	</target>
+
+    <property name="formatter" value="xml" />
+
+    <!-- Test the distribution -->
+    <target name="junit.report.Launcher" depends="build" description="JUnit test of Launcher">
+        <antcall target="junit.Launcher" />
+        <antcall target="junit.report"/>   
+    </target>
+   
+    <target name="junit.Launcher" depends="build">
+        <echo>********** junit-Launcher.jar</echo>
+        <junit fork="yes" showoutput="no" printsummary="yes">
+            <jvmarg value="-Done-jar.verbose=true" />
+            <jvmarg value="-Done-jar.jarname=${basedir}/build/test-Launcher.jar" />
+            <classpath>
+                <fileset file="${basedir}/build/test-Launcher.jar" />
+                <path refid="one-jar.libraries"/>
+            	<path location="classes/junit" />
+            </classpath>
+
+            <!-- Uses Invoker to set up a JUnit test bridge -->
+            <test name="lightsoutgaming.lifeless.launcher.test.LauncherSuite" todir="${test.results.dir}" outfile="LauncherSuite" />
+            <formatter type="${formatter}" usefile="yes" />
+        </junit>
+    </target>
+
+    <target name="run.Launcher" depends="build" description="Run a One-Jar Launcher">
+        <java fork="true" jar="build/Launcher.jar"/>
+    </target>
+
+	<target name="test.Launcher" depends="build" description="Stand-alone test a One-Jar Launcher">
+        <java fork="true" jar="build/test-Launcher.jar"/>
+    </target>
+	
+</project>
