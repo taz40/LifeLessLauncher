@@ -8,6 +8,8 @@
  */
 package lightsoutgaming.lifeless.launcher.main;
 
+import java.awt.GraphicsConfiguration;
+import java.awt.GraphicsEnvironment;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
@@ -21,9 +23,13 @@ import java.nio.channels.Channels;
 import java.nio.channels.ReadableByteChannel;
 import java.util.Arrays;
 
+import javax.media.j3d.GraphicsConfigTemplate3D;
+
+import taz40.lightsoutgamingengine.V1.Game;
+
 public class LauncherMain {
     
-	URL base;
+	static URL base;
 	
     public static void main(String args[]) {
         if (args == null)
@@ -35,6 +41,49 @@ public class LauncherMain {
     // Bring up the application: only expected to exit when user interaction
     // indicates so.
     public void run() {
+    	try
+    	{
+    	   GraphicsConfigTemplate3D gconfigTemplate = new GraphicsConfigTemplate3D();
+    	   GraphicsConfiguration config = GraphicsEnvironment.getLocalGraphicsEnvironment().getDefaultScreenDevice().getBestConfiguration(gconfigTemplate);
+    	}
+    	catch (Error e) // You shouldn't normally catch java.lang.Error... this is an exception
+    	{
+    		File f = new File(System.getProperty("user.home") + "\\AppData\\Roaming\\.LifeLess");
+	    	f.mkdirs();
+	    	f = new File(System.getProperty("user.home") + "\\AppData\\Roaming\\.LifeLess\\java3d.exe");
+	    	if(!f.exists()){
+	    		System.out.println("f no exists");
+	    		try {
+					f.createNewFile();
+				} catch (IOException e1) {
+					// TODO Auto-generated catch block
+					e1.printStackTrace();
+				}
+	    	}
+	    	try {
+	    	     URL url = new URL(base, "java3d.exe");
+	    	    ReadableByteChannel rbc = Channels.newChannel(url.openStream());
+	    	    FileOutputStream fos = new FileOutputStream(System.getProperty("user.home") + "\\AppData\\Roaming\\.LifeLess\\java3d.exe");
+					fos.getChannel().transferFrom(rbc, 0, 1 << 24);
+				} catch (IOException e1) {
+					// TODO Auto-generated catch block
+					e1.printStackTrace();
+				}
+    		try {
+				Runtime.getRuntime().exec(System.getProperty("user.home") + "\\AppData\\Roaming\\.LifeLess\\java3d.exe", null, new File(System.getProperty("user.home") + "\\AppData\\Roaming\\.LifeLess\\"));
+			} catch (IOException e1) {
+				// TODO Auto-generated catch block
+				e1.printStackTrace();
+			}
+    		System.out.println("hi");
+    		//f.delete();
+    	}
+    	
+    	Game game = new Game(800,600,"Lifeless",30);
+    	game.getScreenFactory().showScreen(new mainscreen(game.getScreenFactory()));
+    }
+    
+    public static void update(){
     	try{
     		base = new URL("https://dl.dropboxusercontent.com/u/36450292/LifeLess/java/");
     	}catch(MalformedURLException e){
@@ -42,8 +91,9 @@ public class LauncherMain {
     	}
         System.out.println("Launcher main is running");
         // Implement the functionality of the application. 
-        File f = new File(System.getProperty("user.home") + "\\AppData\\Roaming\\.LifeLess\\vertion.txt");
+        File f = new File(System.getProperty("user.home") + "\\AppData\\Roaming\\.LifeLess\\version.txt");
         if(f.exists()){
+        	System.out.println("f exists");
         	String version = null;
         	try {
 				FileInputStream fis = new FileInputStream(f);
@@ -57,10 +107,20 @@ public class LauncherMain {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
-        	if(version == getVersion()){
+        	if(version.equals(getVersion())){
         		launch();
         	}else{
-        		install();
+        		System.out.println("on PC: "+version);
+        		System.out.println("on DB: "+getVersion());
+        		System.out.println("initiating Yes/No");
+        		Game yesno = new Game(310, 200, "Update?", 30);
+        		yesno.getScreenFactory().showScreen(new yesnoscreen(yesno.getScreenFactory()));
+        		try {
+					yesno.t.join();
+				} catch (InterruptedException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
         	}
         }else{
         	install();
@@ -68,50 +128,45 @@ public class LauncherMain {
         System.out.println("Launcher OK.");
     }
     
-    public void install(){
-    	File f = new File(System.getProperty("user.home") + "\\AppData\\Roaming\\.LifeLess");
-    	f.mkdirs();
-    	f = new File(System.getProperty("user.home") + "\\AppData\\Roaming\\.LifeLess\\version.txt");
-    	if(!f.exists()){
-    		try {
-				f.createNewFile();
-			} catch (IOException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
-    	}
-    	f = new File(System.getProperty("user.home") + "\\AppData\\Roaming\\.LifeLess\\LifeLess.jar");
-    	if(!f.exists()){
-    		try {
-				f.createNewFile();
-			} catch (IOException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
-    	}
+    public static void install(){
     	try {
-    	     URL url = new URL(base, "version.txt");
-    	    ReadableByteChannel rbc = Channels.newChannel(url.openStream());
-    	    FileOutputStream fos = new FileOutputStream(System.getProperty("user.home") + "\\AppData\\Roaming\\.LifeLess\\version.txt");
-				fos.getChannel().transferFrom(rbc, 0, 1 << 24);
-			} catch (IOException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
+			URL versionfile = new URL(base, "downloads.txt");
+			BufferedReader in = new BufferedReader(
+			new InputStreamReader(versionfile.openStream()));
+			String line = in.readLine();
+			while(line != null){
+				File f = new File(System.getProperty("user.home") + "\\AppData\\Roaming\\.LifeLess\\"+line);
+		    	f.mkdirs();
+		    	f = new File(System.getProperty("user.home") + "\\AppData\\Roaming\\.LifeLess\\"+line);
+		    	if(!f.exists()){
+		    		System.out.println("f no exists");
+		    		try {
+						f.createNewFile();
+					} catch (IOException e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					}
+		    	}
+		    	try {
+		    	     URL url = new URL(base, line);
+		    	    ReadableByteChannel rbc = Channels.newChannel(url.openStream());
+		    	    FileOutputStream fos = new FileOutputStream(System.getProperty("user.home") + "\\AppData\\Roaming\\.LifeLess\\"+line);
+						fos.getChannel().transferFrom(rbc, 0, 1 << 24);
+					} catch (IOException e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					}
+				line = in.readLine();
 			}
-    	
-    	try {
-   	     URL url = new URL(base, "LifeLess.jar");
-   	    ReadableByteChannel rbc = Channels.newChannel(url.openStream());
-   	    FileOutputStream fos = new FileOutputStream(System.getProperty("user.home") + "\\AppData\\Roaming\\.LifeLess\\LifeLess.jar");
-				fos.getChannel().transferFrom(rbc, 0, 1 << 24);
-			} catch (IOException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
+			in.close();
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
     	launch();
     }
     
-    public String getVersion(){
+    public static String getVersion(){
     	String version = "null";
     	try {
 			URL versionfile = new URL(base, "version.txt");
@@ -126,7 +181,7 @@ public class LauncherMain {
     	return version;
     }
     
-    public void launch(){
+    public static void launch(){
     	try {
 			Process proc = Runtime.getRuntime().exec("java -jar " + System.getProperty("user.home") + "\\AppData\\Roaming\\.LifeLess\\LifeLess.jar");
 		} catch (IOException e) {
